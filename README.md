@@ -106,6 +106,21 @@ Implement incrementally with `implement phase X` (see [`docs/RECEIPTBRAIN-PHASES
 
 `GET /api/health` returns `{ok, checks: {db, redis, ai}}`. Returns 503 if any dependency is down — wire it to your uptime monitor and Docker healthcheck.
 
+### Share locally via [localhost.run](https://localhost.run) (free, no signup)
+
+Expose `localhost:3000` with HTTPS for demos or mobile testing. Only the Next.js app is public.
+
+Requires an SSH key (`ssh-keygen -t ed25519` if you do not have one). No localhost.run account needed for random `*.lhr.life` URLs.
+
+```bash
+pnpm dev                    # terminal 1
+pnpm run tunnel:localhost   # terminal 2 — copy the https://….lhr.life URL
+```
+
+Set `NEXTAUTH_URL` in `.env` to that URL and restart `pnpm dev` so magic links work.
+
+Free URLs change each session. See [localhost.run](https://localhost.run) for custom domains.
+
 ## License
 
 MIT
