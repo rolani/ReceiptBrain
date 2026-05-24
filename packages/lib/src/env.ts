@@ -24,3 +24,12 @@ export function parseEnv<S extends z.ZodTypeAny>(schema: S, source: NodeJS.Proce
   }
   return result.data;
 }
+
+/** Accepts full URLs or Render private-network hostport values (e.g. receiptbrain-ai:10000). */
+export function serviceUrlSchema(message = 'Invalid URL') {
+  return z
+    .string()
+    .min(1)
+    .transform((v) => (/^https?:\/\//i.test(v) ? v : `http://${v}`))
+    .pipe(z.string().url(message));
+}

@@ -1,0 +1,137 @@
+# ReceiptBrain — Render Blueprint
+# Apply: https://dashboard.render.com/blueprint/new?repo=https://github.com/rolani/ReceiptBrain
+#
+# After Apply, set secrets marked sync: false in the Dashboard.
+# Add custom domain receiptbrain.richolaniyan.com on receiptbrain-web → Settings → Custom Domains.
+
+envVarGroups:
+  - name: receiptbrain-core
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      - key: MAX_UPLOAD_MB
+        value: '10'
+      - key: OPENAI_MODEL_EXTRACT
+        value: gpt-4o
+      - key: OPENAI_MODEL_RECOMMEND
+        value: gpt-4o-mini
+      - key: S3_FORCE_PATH_STYLE
+        value: 'false'
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
+      - key: AUTH_EMAIL_FROM
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      - key: AUTH_GOOGLE_ID
+        sync: false
+      - key: AUTH_GOOGLE_SECRET
+        sync: false
+
+services:
+  - type: web
+    name: receiptbrain-web
+    runtime: node
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
+    buildCommand: >-
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @receiptbrain/lib db:generate &&
+      pnpm --filter @receiptbrain/lib exec prisma migrate deploy --schema=prisma/schema.prisma &&
+      SKIP_ENV_VALIDATION=true pnpm --filter @receiptbrain/web build
+    startCommand: pnpm --filter @receiptbrain/web start
+    envVars:
+      - fromGroup: receiptbrain-core
+      - key: DATABASE_URL
+        fromDatabase:
+          name: receiptbrain-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: receiptbrain-redis
+          property: connectionString
+      - key: NEXTAUTH_URL
+        value: https://receiptbrain.richolaniyan.com
+      - key: AI_SERVICE_URL
+        fromService:
+          name: receiptbrain-ai
+          type: pserv
+          property: hostport
+
+  - type: worker
+    name: receiptbrain-worker
+    runtime: node
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeploy: true
+    buildCommand: >-
+      pnpm install --frozen-lockfile &&
+      pnpm --filter @receiptbrain/lib db:generate &&
+      pnpm --filter @receiptbrain/worker build
+    startCommand: pnpm --filter @receiptbrain/worker start
+    envVars:
+      - fromGroup: receiptbrain-core
+      - key: DATABASE_URL
+        fromDatabase:
+          name: receiptbrain-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: receiptbrain-redis
+          property: connectionString
+      - key: AI_SERVICE_URL
+        fromService:
+          name: receiptbrain-ai
+          type: pserv
+          property: hostport
+
+  - type: pserv
+    name: receiptbrain-ai
+    runtime: docker
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./services/ai/Dockerfile
+    dockerContext: ./services/ai
+    envVars:
+      - fromGroup: receiptbrain-core
+
+  - type: keyvalue
+    name: receiptbrain-redis
+    plan: starter
+    region: ohio
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+databases:
+  - name: receiptbrain-db
+    databaseName: receiptbrain
+    user: receiptbrain
+    plan: basic-256mb
+    postgresMajorVersion: '16'
+    ipAllowList: []

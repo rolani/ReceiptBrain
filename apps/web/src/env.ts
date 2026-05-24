@@ -15,7 +15,11 @@ export const env = createEnv({
       .union([z.literal('true'), z.literal('false')])
       .default('true')
       .transform((v) => v === 'true'),
-    AI_SERVICE_URL: z.string().url(),
+    AI_SERVICE_URL: z
+      .string()
+      .min(1)
+      .transform((v) => (/^https?:\/\//i.test(v) ? v : `http://${v}`))
+      .pipe(z.string().url()),
     AI_SERVICE_TOKEN: z.string().min(1),
     OPENAI_API_KEY: z.string().min(1),
     OPENAI_MODEL_EXTRACT: z.string().default('gpt-4o'),
