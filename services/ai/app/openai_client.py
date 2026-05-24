@@ -167,6 +167,69 @@ async def call_extract(
     return payload, usage
 
 
+def _recommend_json_schema() -> dict[str, Any]:
+    return {
+        "name": "Recommendations",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": [
+                                    "cheaper_alternative",
+                                    "subscription_waste",
+                                    "spending_spike",
+                                    "optimization_tip",
+                                ],
+                            },
+                            "title": {"type": "string"},
+                            "description": {"type": "string"},
+                            "estimatedSavings": {"type": ["number", "null"]},
+                            "currency": {"type": ["string", "null"]},
+                            "action": {
+                                "type": ["object", "null"],
+                                "properties": {
+                                    "label": {"type": "string"},
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                            "external_link",
+                                            "in_app",
+                                            "dismiss",
+                                        ],
+                                    },
+                                    "target": {"type": ["string", "null"]},
+                                },
+                                "required": ["label", "kind"],
+                            },
+                            "sourceReceiptIds": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                            },
+                            "sourceSubscriptionId": {"type": ["string", "null"]},
+                            "confidence": {"type": "number"},
+                        },
+                        "required": [
+                            "type",
+                            "title",
+                            "description",
+                            "sourceReceiptIds",
+                            "confidence",
+                        ],
+                    },
+                }
+            },
+            "required": ["items"],
+        },
+    }
+
+
 async def call_recommend(
     aggregate: dict[str, Any], *, prompt_version: str
 ) -> tuple[list[dict[str, Any]], dict[str, int | float]]:
@@ -181,7 +244,10 @@ async def call_recommend(
     started = time.perf_counter()
     response = client.chat.completions.create(  # type: ignore[call-arg]
         model=settings.openai_model_recommend,
-        response_format={"type": "json_object"},
+        response_format={
+            "type": "json_schema",
+            "json_schema": _recommend_json_schema(),
+        },
         messages=[
             {
                 "role": "system",
@@ -189,10 +255,7 @@ async def call_recommend(
                     "You are a careful personal finance assistant. Given an "
                     "aggregate of the user's last 90 days of spending, return "
                     "at most 5 actionable, explainable recommendations. Cite "
-                    "source receipts/subscriptions. Return {\"items\":[...]} "
-                    "where each item has type, title, description, "
-                    "estimatedSavings, currency, action, sourceReceiptIds, "
-                    "confidence."
+                    "source receipts and subscriptions where possible."
                 ),
             },
             {
@@ -200,7 +263,7 @@ async def call_recommend(
                 "content": f"Prompt version: {prompt_version}\n{_json.dumps(aggregate)}",
             },
         ],
-    )
+    ),
     _ = int((time.perf_counter() - started) * 1000)
     raw = response.choices[0].message.content or '{"items": []}'
     parsed = _json.loads(raw)
