@@ -12,7 +12,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "dev": "turbo run dev --parallel",
+    "dev": "turbo run dev",
     "tunnel:localhost": "bash scripts/run-localhost-run-tunnel.sh",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore",
     "clean": "turbo run clean && rimraf node_modules"
