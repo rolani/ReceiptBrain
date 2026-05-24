@@ -33,3 +33,7 @@ playwright-report
 test-results
 
 .tmp-promptforge
+
+# Cloudflare Tunnel (local credentials — never commit)
+cloudflared/config.yml
+cloudflared/*.json

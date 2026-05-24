@@ -106,6 +106,20 @@ Implement incrementally with `implement phase X` (see [`docs/RECEIPTBRAIN-PHASES
 
 `GET /api/health` returns `{ok, checks: {db, redis, ai}}`. Returns 503 if any dependency is down — wire it to your uptime monitor and Docker healthcheck.
 
+### Expose locally via Cloudflare Tunnel (free)
+
+Publish `localhost:3000` at `https://receiptbrain.richolaniyan.com` without paid hosting. Only the Next.js app is public; Postgres, Redis, MinIO, AI, and the worker stay local.
+
+```bash
+brew install cloudflared
+pnpm run tunnel:setup    # one-time: login, create tunnel, write config
+# Set NEXTAUTH_URL=https://receiptbrain.richolaniyan.com in .env
+pnpm dev                 # terminal 1
+pnpm run tunnel          # terminal 2
+```
+
+Full guide: [`docs/cloudflare-tunnel.md`](docs/cloudflare-tunnel.md).
+
 ## License
 
 MIT
