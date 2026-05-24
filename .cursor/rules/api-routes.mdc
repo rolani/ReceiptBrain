@@ -1,0 +1,58 @@
+---
+description: Next.js route handler conventions and testing
+globs: "apps/web/app/api/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# API routes
+
+## Conventions
+
+- Validate every input with Zod schemas imported from `@receiptbrain/contracts` (same schemas the client uses)
+- Call `await requireSession()` at the top of every handler except `/api/health`
+- Enforce ownership on every Prisma query (`where: { userId: session.user.id }`)
+- Use cursor-based pagination on list endpoints
+- Apply rate limit middleware to `/api/upload` (30/hr/user) and `/api/recommend` (10/hr/user)
+- Stream receipt images only via signed URLs from `/api/receipts/:id/image` — never expose S3 URLs
+
+## Required routes (outline)
+
+```
+POST   /api/upload                       # multipart → S3 → enqueue extract_receipt
+GET    /api/receipts                     # cursor pagination + filters
+GET    /api/receipts/:id
+PATCH  /api/receipts/:id                 # user correction
+DELETE /api/receipts/:id                 # soft delete
+GET    /api/receipts/:id/image           # signed-URL stream
+GET    /api/receipts/:id/status          # polling for extraction progress
+GET    /api/subscriptions
+PATCH  /api/subscriptions/:id            # cancel/pause/confirm
+GET    /api/insights                     # ?type=&status=
+PATCH  /api/insights/:id                 # seen/dismissed/actioned
+POST   /api/recommend                    # enqueue generate_insights
+GET    /api/health                       # public; db + redis + ai
+```
+
+## Upload contract
+
+- MIME allowlist: `image/jpeg`, `image/png`, `image/heic`, `application/pdf`
+- Max size: `MAX_UPLOAD_MB` env (default 10)
+- Compute sha256 → dedup against `Receipt.imageHash` for this user (return existing receipt if hit)
+- Response: `{ receiptId, status, jobId }`
+
+## Testing
+
+Integration tests mock S3, Redis/BullMQ, and Prisma. Required cases per route:
+
+- Unauthed → 401
+- Cross-user access → 403
+- Invalid input → 400 with `{ error, details }`
+- Happy path → expected status + body + side effects (enqueue called, row created)
+- Rate limit hit → 429 (for limited routes)
+
+```typescript
+it('returns 400 when no file', async () => { ... });
+it('dedupes when imageHash already exists', async () => { ... });
+it('enqueues extract_receipt with receiptId as idempotencyKey', async () => { ... });
+it('rejects request from another user', async () => { ... });
+```

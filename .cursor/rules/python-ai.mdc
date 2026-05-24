@@ -1,0 +1,44 @@
+---
+description: FastAPI AI service — extract and recommend endpoints
+globs: "services/ai/**/*.py"
+alwaysApply: false
+---
+
+# AI service
+
+- FastAPI in `services/ai`; **internal-only**: requires `X-Internal-Token` matching `AI_SERVICE_TOKEN`
+- Env via `pydantic-settings`; fail fast on missing keys at boot
+- Pydantic request/response models mirrored in `packages/contracts`
+- All OpenAI calls use **Structured Outputs** (`response_format={"type":"json_schema", ...}`) — no freeform JSON parsing
+- Model selection from env: `OPENAI_MODEL_EXTRACT` (default `gpt-4o`), `OPENAI_MODEL_RECOMMEND` (default `gpt-4o-mini`)
+- Return per-field confidence (0..1) + `usage` (promptTokens, completionTokens, costUsdEstimate)
+- Retry OpenAI calls with exponential backoff; timeout configurable
+- PII guard: strip Luhn-valid PAN candidates from logs/breadcrumbs before persisting
+- Sentry + `structlog` initialized; logs include requestId
+
+## Endpoints
+
+- `POST /extract`: image (multipart or signed URL) → preprocess → OpenAI Vision → structured JSON with `fieldConfidence`
+- `POST /recommend`: pre-aggregated summary (NOT raw receipts) → recommendation list with `sourceReceiptIds`, `sourceSubscriptionId`, `confidence`
+- `GET /health`: `{ok, model, promptVersions}`
+
+## Image preprocessing (Pillow)
+
+- HEIC → JPEG (`pillow-heif`)
+- EXIF rotation applied
+- Resize longest edge ≤ 2048px
+- PDF: render first page to image
+- JPEG quality 85 for cost control
+
+## Testing
+
+```bash
+cd services/ai && pytest tests -q
+```
+
+- Mock OpenAI client; never call live API in CI
+- Fixture-driven `/extract` tests:
+  - `fixtures/receipts/*.jpg` + matching `*.json` ground truth
+  - Assert merchant exact, total within ±$0.01, item count exact, all fields populated
+- Contract tests: response schema matches `packages/contracts` TS types
+- Internal-token tests: missing / wrong token → 401

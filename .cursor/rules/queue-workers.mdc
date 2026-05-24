@@ -1,0 +1,33 @@
+---
+description: BullMQ queues, workers, and job tests
+globs: "apps/worker/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Queue system
+
+- **Workers live in `apps/worker`** (separate Node process) — never inside Next.js handlers
+- Queues defined in `packages/lib/queue`: `extract_receipt`, `generate_insights`
+- Retry with exponential backoff (max 5 attempts); failed jobs surface in `Receipt.status = failed` or `needs_review`
+- Idempotent handlers:
+  - `extract_receipt`: keyed on `receiptId`; safe to replay
+  - `generate_insights`: debounced per user; Insight upsert keyed on `(userId, contentFingerprint)`
+- Always call AI service via the worker (never the web tier) and send `X-Internal-Token`
+- Persist every AI call as an `ExtractionAttempt` row (raw JSON + usage + cost)
+- Set `Receipt.status = needs_review` when any critical field confidence < 0.7
+
+## Testing
+
+Mock AI HTTP client, Prisma, S3, and Redis. Required cases:
+
+| Scenario | Expected |
+|----------|----------|
+| Happy path | Receipt populated, ExtractionAttempt row, generate_insights enqueued |
+| AI timeout | Retry scheduled, no partial state |
+| Duplicate job id | Idempotent — no duplicate rows |
+| Low confidence | `Receipt.status = needs_review`, fields still saved |
+| Malformed AI response | Fail fast, no retry storm, ExtractionAttempt logged with status=failed |
+
+## Dev tooling
+
+- Bull Board mounted at `/admin/queues` in dev only, behind auth

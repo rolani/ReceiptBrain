@@ -1,0 +1,42 @@
+---
+description: Prisma schema, migrations, and DB tests
+globs: "**/*.{prisma,sql}"
+alwaysApply: false
+---
+
+# Database
+
+## Schema rules
+
+- Models: User, Merchant, Receipt, Item, Subscription, Insight, ExtractionAttempt (see `outline.md`)
+- **Money is `Decimal(12,2)`** — never `Float`
+- Every model has `createdAt` and `updatedAt`
+- Soft delete via `deletedAt DateTime?` where users can remove data (Receipt at minimum)
+- Indexes on FK + common query patterns:
+  - `Receipt @@index([userId, purchasedAt])`, `@@index([userId, status])`
+  - `Receipt @@unique([userId, imageHash])` for dedup
+  - `Insight @@index([userId, type, status])`
+  - `Subscription @@unique([userId, merchantId, interval])`
+- Enums in the schema, not freetext strings (`ReceiptStatus`, `SubscriptionInterval`, `InsightStatus`, etc.)
+- Merchant normalization lives in its own `Merchant` table; `Receipt.rawMerchant` keeps the original
+
+## Migrations
+
+- Committed; never edit applied migration SQL by hand
+- One concern per migration
+
+## Seed
+
+- Demo user + 20+ receipts across multiple merchants, 2 subscriptions, sample insights
+- Idempotent — running twice should not duplicate rows
+
+## Testing
+
+```bash
+pnpm --filter @receiptbrain/lib test
+```
+
+- CRUD smoke test on the Prisma client
+- Seed idempotency or expected-row-count test
+- Ownership scoping helper test (userA cannot read userB's rows)
+- Use transaction rollback or a test schema for integration DB tests

@@ -1,0 +1,22 @@
+---
+description: Logging, error tracking, health checks, AI cost telemetry
+alwaysApply: true
+---
+
+# Observability
+
+- **Logging**: `pino` in web + worker, `structlog` in AI. Every log line includes `requestId` (or `jobId` for workers). No `console.log` in shipped code.
+- **Error tracking**: Sentry SDK initialized in all three runtimes (web, worker, AI). Configure `beforeSend` to scrub receipt bodies, image URLs, and email addresses.
+- **Health**:
+  - Web `GET /api/health` returns `{ok, db, redis, ai, version}` — used by docker healthcheck + uptime monitor
+  - AI `GET /health` returns `{ok, model, promptVersions}`
+  - Worker emits Redis heartbeat every 30s
+- **AI cost telemetry**: persist `promptTokens`, `completionTokens`, `costUsdEstimate`, `durationMs` on every `ExtractionAttempt` row. Log them as structured fields too.
+- **Queue events**: mirror BullMQ `job:completed` and `job:failed` to logs with `jobId`, `queue`, `attempt`, `durationMs`.
+- **Tracing** (optional, Phase 9+): OpenTelemetry — propagate `traceparent` from web → queue payload → worker → AI service.
+
+## Test checklist
+
+- Health route returns non-200 when any dependency down (or document degradation behavior)
+- Sentry scrub config has a unit test asserting receipt body / email is removed
+- Token usage assertions in worker tests (`expect(attempt.promptTokens).toBeGreaterThan(0)`)

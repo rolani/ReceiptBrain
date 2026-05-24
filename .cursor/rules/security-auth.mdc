@@ -1,0 +1,25 @@
+---
+description: Auth, multi-tenancy, file safety, internal service boundary
+alwaysApply: true
+---
+
+# Security & auth
+
+- **Auth is MVP**: NextAuth.js v5 + Resend magic link. Sessions in Postgres via `@auth/prisma-adapter`. No mock-only auth in production paths.
+- **Every API route requires `requireSession()`** except `/api/health`.
+- **Multi-tenancy**: every Prisma query filters by `session.user.id`. Add an isolation test (userA → 403 on userB's row) for every new route.
+- **Upload safety**: MIME sniff + size cap (`MAX_UPLOAD_MB`) + extension allowlist (`image/jpeg`, `image/png`, `image/heic`, `application/pdf`). Reject early before touching S3.
+- **Storage**: S3 bucket is **private**. Never return raw S3 URLs to the client. Stream via `GET /api/receipts/:id/image` using signed URLs with ≤ 5 min TTL.
+- **Dedup**: hash uploads (sha256) and unique-key on `(userId, imageHash)` so the same image cannot be ingested twice.
+- **Internal service boundary**: AI service requires `X-Internal-Token` matching `AI_SERVICE_TOKEN`. Only the worker calls it. Reject unauthenticated calls with 401.
+- **Rate limits**: `/api/upload` 30/hr/user; `/api/recommend` 10/hr/user. Backed by Redis in prod.
+- **PII**: strip Luhn-valid PAN candidates before sending to OpenAI or to logs. Document policy: no model training on user receipts.
+- **Sentry scrubbing**: receipt bodies, image URLs, and email addresses must be scrubbed from breadcrumbs/events.
+
+## Test checklist for any new route
+
+- [ ] 401 when unauthed
+- [ ] 403 when accessing another user's row
+- [ ] 400 on invalid Zod input
+- [ ] 429 when rate-limited (if applicable)
+- [ ] Happy path body shape matches `packages/contracts`

@@ -1,0 +1,18 @@
+---
+description: Phase-based implementation workflow (implement phase X)
+alwaysApply: true
+---
+
+# Phase workflow
+
+When the user says **implement phase X** (0–8):
+
+1. Read `docs/RECEIPTBRAIN-PHASES.md` → `## Phase X`
+2. Ask only `ASK:` questions not already answered
+3. Apply `.cursor/rules/tdd-testing.mdc` for every behavior change
+4. Run phase exit-criteria commands before completion
+5. Report: what was built, commands run, open follow-ups
+
+Use skill `.cursor/skills/phase-implementer/SKILL.md` for full checklist.
+
+Documentation-only phase requests skip TDD.

@@ -1,0 +1,51 @@
+---
+description: Enforce TDD and verification before claiming completion
+alwaysApply: true
+---
+
+# Test-driven development
+
+## Iron law
+
+```
+NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+```
+
+1. **RED** — write failing test for intended behavior
+2. **Verify failure** — wrong/missing behavior, not typos
+3. **GREEN** — minimal production code to pass
+4. **Refactor** — only after green; keep tests passing
+
+## Coverage by layer
+
+| Layer | Tool | Focus |
+|-------|------|-------|
+| Pure logic | Vitest / pytest | merchant normalization, subscription detection, insight scoring, env validation |
+| Contracts | Vitest | Zod schema round-trip, request/response shapes |
+| API routes | Vitest + mocks | Zod validation, auth + ownership, status codes, queue/storage side effects, rate limits |
+| Workers | Vitest + mocks | job contracts, retries, idempotency, low-confidence path |
+| AI service | pytest + mocks | OpenAI Structured Outputs, fixture extraction tolerance, PII guard, internal token |
+| UI | Vitest + Testing Library | components, loading/empty/error states, optimistic mutations |
+| E2E | Playwright | sign in → upload fixture → see extracted receipt + insight (Phase 9) |
+
+## Commands
+
+```bash
+pnpm run test                    # all JS/TS workspaces (web, worker, lib, ui, contracts)
+cd services/ai && pytest tests -q
+pnpm --filter @receiptbrain/web test:e2e   # when present
+```
+
+## AI fixtures
+
+Fixture-driven tests live in `fixtures/receipts/`: each `.jpg|.png|.pdf` has a matching `.json` ground truth. AI extract tests assert merchant exact, total within ±$0.01, item count exact.
+
+If test tooling is missing, scaffold it in Phase 0 before feature work.
+
+## Completion rule
+
+Never claim "done" or "passing" without command output showing green tests for the changed area.
+
+## Exceptions (explicit approval only)
+
+Docs-only, pure config, generated code.

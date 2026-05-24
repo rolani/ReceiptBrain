@@ -1,0 +1,27 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900;
+  }
+}
+
+@layer components {
+  .card-surface {
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-sm;
+  }
+
+  .receipt-card {
+    @apply rounded-xl border border-slate-300 bg-white shadow-sm;
+  }
+
+  .app-shell-main {
+    @apply min-h-[calc(100vh-4rem)] w-full min-w-0 flex-1 p-4 sm:p-6 lg:p-8;
+  }
+}

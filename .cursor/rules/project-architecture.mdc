@@ -1,0 +1,41 @@
+---
+description: ReceiptBrain monorepo stack and boundaries (outline.md)
+alwaysApply: true
+---
+
+# Architecture
+
+- **Monorepo**: pnpm workspaces + turbo
+- **Packages**: `@receiptbrain/web` (Next.js + API), `@receiptbrain/worker` (BullMQ process), `@receiptbrain/ui`, `@receiptbrain/lib`, `@receiptbrain/contracts` (shared Zod schemas)
+- **Services**: `services/ai` (Python FastAPI)
+- **Fixtures**: `fixtures/receipts/` — sample images + ground-truth JSON for AI tests
+- **Web**: Next.js App Router; route handlers for API; React Query + Zustand + RHF + Zod
+- **Worker**: separate Node process (`apps/worker`) — BullMQ handlers cannot live in Next.js route handlers
+- **AI**: FastAPI; `/extract`, `/recommend`; OpenAI Vision via **Structured Outputs**; internal-only (`X-Internal-Token`); never block long work on HTTP
+- **Data**: PostgreSQL via Prisma (Decimal for money, indexes on FK + common queries); Redis + BullMQ for `extract_receipt` and `generate_insights`
+- **Storage**: S3-compatible (MinIO local), **private bucket + signed URLs only**; receipt images separate from structured data
+- **Auth**: NextAuth.js v5 + Resend magic link — MVP, not bonus; every API route except `/api/health` requires session
+
+## Domain models (Prisma)
+
+User → Receipt (status, fieldConfidence, imageHash) → Item; Receipt → ExtractionAttempt; Merchant; User → Subscription (status, confidence, sourceReceiptIds); User → Insight (status, sourceReceiptIds, sourceSubscriptionId)
+
+## Enums
+
+`ReceiptStatus`, `ItemCategory`, `SubscriptionInterval`, `SubscriptionStatus`, `InsightType`, `InsightStatus`, `ExtractionStatus`
+
+## Insight types
+
+`cheaper_alternative`, `subscription_waste`, `spending_spike`, `optimization_tip`
+
+## Env vars (see `.env.example`)
+
+`DATABASE_URL`, `REDIS_URL`, `S3_*`, `OPENAI_API_KEY`, `OPENAI_MODEL_EXTRACT`, `OPENAI_MODEL_RECOMMEND`, `AI_SERVICE_URL`, `AI_SERVICE_TOKEN`, `NEXTAUTH_SECRET`, `RESEND_API_KEY`, `SENTRY_DSN`, `MAX_UPLOAD_MB`
+
+## Do not
+
+- Move workers into Next.js route handlers
+- Use `Float` for money — use Prisma `Decimal`
+- Expose S3 URLs publicly — always sign and stream
+- Skip session check on a new API route
+- Call AI service from the web (only the worker does)

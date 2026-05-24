@@ -1,0 +1,60 @@
+{
+  "name": "@receiptbrain/lib",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./money": "./src/money.ts",
+    "./env": "./src/env.ts",
+    "./logger": "./src/logger.ts",
+    "./prisma": "./src/prisma.ts",
+    "./scoping": "./src/scoping.ts",
+    "./storage": "./src/storage.ts",
+    "./queue": "./src/queue.ts",
+    "./image": "./src/image.ts",
+    "./domain": "./src/domain/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf dist .turbo",
+    "postinstall": "prisma generate --schema=prisma/schema.prisma || true",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "dotenv -e ../../.env -- prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:migrate:dev": "dotenv -e ../../.env -- prisma migrate dev --schema=prisma/schema.prisma",
+    "db:push": "dotenv -e ../../.env -- prisma db push --schema=prisma/schema.prisma",
+    "db:reset": "dotenv -e ../../.env -- prisma migrate reset --schema=prisma/schema.prisma --force",
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "db:studio": "dotenv -e ../../.env -- prisma studio --schema=prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3",
+    "@aws-sdk/s3-request-presigner": "3",
+    "@prisma/client": "6",
+    "@receiptbrain/contracts": "workspace:*",
+    "bullmq": "5",
+    "ioredis": "5",
+    "pdf-to-png-converter": "3",
+    "pino": "9.5.0",
+    "sharp": "0.33",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@typescript-eslint/eslint-plugin": "8.18.2",
+    "@typescript-eslint/parser": "8.18.2",
+    "dotenv-cli": "7",
+    "eslint": "9.17.0",
+    "pdf-lib": "1",
+    "prisma": "6",
+    "rimraf": "6.0.1",
+    "tsx": "4",
+    "typescript": "5.6.3",
+    "vitest": "2.1.8"
+  }
+}

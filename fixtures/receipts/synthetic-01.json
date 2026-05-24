@@ -1,0 +1,14 @@
+{
+  "merchant": "Starbucks",
+  "rawMerchant": "STARBUCKS #1234",
+  "currency": "USD",
+  "subtotal": 9.70,
+  "tax": 0.80,
+  "tip": 0.00,
+  "total": 10.50,
+  "purchasedAt": "2026-05-22T00:00:00Z",
+  "items": [
+    { "name": "Latte", "unitPrice": 5.20, "quantity": 1, "lineTotal": 5.20, "category": "dining" },
+    { "name": "Bagel", "unitPrice": 4.50, "quantity": 1, "lineTotal": 4.50, "category": "dining" }
+  ]
+}

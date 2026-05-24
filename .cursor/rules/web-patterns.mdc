@@ -1,0 +1,28 @@
+---
+description: Next.js React patterns — state, forms, UI
+globs: "apps/web/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Web patterns
+
+- **Server state**: TanStack React Query; keys by resource (`receipts`, `receipts/:id`, `insights`, `subscriptions`)
+- **UI state**: Zustand (drawers, upload progress, date range, sidebar)
+- **Forms**: React Hook Form + Zod; reuse schemas from `@receiptbrain/contracts` on both client and server
+- **Components**: live in `apps/web/components`; shared primitives in `packages/ui`
+- **Money rendering**: always with currency code; never assume USD
+- **Pages**: card layout, responsive, loading skeletons (stable dimensions, no CLS), error boundaries, **empty states**
+- **Optimistic updates**: PATCH on receipt corrections and insight status — rollback on mutation failure
+- **Mobile capture**: ReceiptUploader uses `<input type="file" accept="image/*" capture="environment">` as a first-class flow alongside drag/drop
+- **Confidence chips**: ReceiptCard + ReceiptDetailEditor highlight fields with `fieldConfidence < 0.7`
+- **Explainability**: every InsightCard shows source receipts ("based on N receipts") and a dismiss/action button
+
+## Routes (outline)
+
+`/`, `/(auth)/sign-in`, `/dashboard`, `/receipts`, `/receipts/[id]`, `/upload`, `/subscriptions`, `/insights`, `/settings`
+
+## API consumption
+
+- Use typed fetch wrappers in `packages/lib`; payloads typed via `@receiptbrain/contracts`
+- Never call OpenAI from the browser
+- Upload page polls `GET /api/receipts/:id/status` until `extracted | needs_review | failed`
