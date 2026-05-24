@@ -27,9 +27,17 @@ export function InsightsGenerateButton() {
   const mut = useMutation({
     mutationFn: requestInsights,
     onSuccess: () => {
-      // The job runs asynchronously; refetch a few seconds later to pick up
-      // newly-written Insight rows. Worst case the user clicks refresh.
-      setTimeout(() => qc.invalidateQueries({ queryKey: ['insights'] }), 6_000);
+      // Poll while the worker runs generate_insights (often 10–30s with OpenAI).
+      const poll = () => qc.invalidateQueries({ queryKey: ['insights'] });
+      poll();
+      const t1 = setTimeout(poll, 5_000);
+      const t2 = setTimeout(poll, 15_000);
+      const t3 = setTimeout(poll, 30_000);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
     },
   });
 

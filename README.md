@@ -32,6 +32,7 @@ See [`outline.md`](outline.md) for the full product spec and [`docs/RECEIPTBRAIN
 cp .env.example .env
 pnpm install
 docker compose up -d              # postgres, redis, minio, ai service
+# After changing services/ai, rebuild: docker compose build ai && docker compose up -d ai
 pnpm --filter @receiptbrain/lib db:migrate    # apply migrations
 pnpm --filter @receiptbrain/lib db:seed       # demo user + 26 receipts + 2 subs + 3 insights
 pnpm dev                           # web + worker via turbo

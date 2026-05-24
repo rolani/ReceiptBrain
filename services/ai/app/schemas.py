@@ -97,9 +97,16 @@ class RecommendSummary(BaseModel):
     recurringCandidates: list[RecurringCandidate]
 
 
+class RecommendLocation(BaseModel):
+    label: str
+    country: str | None = None
+    merchantHints: list[str] | None = None
+
+
 class RecommendRequest(BaseModel):
     windowDays: int = 90
     currency: str
+    location: RecommendLocation
     summary: RecommendSummary
 
 

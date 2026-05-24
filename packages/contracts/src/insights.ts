@@ -36,9 +36,17 @@ export const SubscriptionPatchSchema = z.object({
 });
 export type SubscriptionPatch = z.infer<typeof SubscriptionPatchSchema>;
 
+export const RecommendLocationSchema = z.object({
+  label: z.string().min(1),
+  country: z.string().length(2).optional(),
+  merchantHints: z.array(z.string().min(1)).max(20).optional(),
+});
+export type RecommendLocation = z.infer<typeof RecommendLocationSchema>;
+
 export const RecommendInputSchema = z.object({
   windowDays: z.number().int().min(1).max(365).default(90),
   currency: CurrencyCodeSchema,
+  location: RecommendLocationSchema,
   summary: z.object({
     topMerchants: z.array(
       z.object({

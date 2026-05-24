@@ -7,6 +7,7 @@ import {
   MoneySchema,
   PaginationCursorSchema,
   ReceiptStatus,
+  RecommendInputSchema,
   UploadResponseSchema,
 } from '../src/index.js';
 
@@ -86,6 +87,23 @@ describe('ExtractResponse', () => {
 
   it('rejects payment_last4 that is not 4 digits', () => {
     expect(() => ExtractResponseSchema.parse({ ...valid, paymentLast4: '12' })).toThrow();
+  });
+});
+
+describe('RecommendInput', () => {
+  it('requires currency and embedded location for /recommend', () => {
+    const out = RecommendInputSchema.parse({
+      windowDays: 90,
+      currency: 'CAD',
+      location: { label: 'Toronto, ON, Canada', country: 'CA', merchantHints: ['4521'] },
+      summary: {
+        topMerchants: [],
+        monthlyTotals: [],
+        recurringCandidates: [],
+      },
+    });
+    expect(out.currency).toBe('CAD');
+    expect(out.location.label).toContain('Toronto');
   });
 });
 

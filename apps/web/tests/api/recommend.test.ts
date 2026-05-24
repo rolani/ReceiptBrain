@@ -22,6 +22,7 @@ import { _resetRateLimitersForTests } from '@/lib/rate-limit';
 beforeEach(() => {
   resetApiMocks();
   _resetRateLimitersForTests();
+  insightsQueueMock.getJob.mockResolvedValue(null);
 });
 
 describe('POST /api/recommend', () => {
@@ -31,17 +32,31 @@ describe('POST /api/recommend', () => {
     expect(res.status).toBe(401);
   });
 
-  it('queues generate_insights with userId as jobId', async () => {
+  it('queues generate_insights immediately with userId as jobId', async () => {
     await signedInAs('u_42');
     const res = await POST();
     expect(res.status).toBe(202);
     const body = await res.json();
     expect(body.jobId).toBe('u_42');
+    expect(body.status).toBe('queued');
     expect(insightsQueueMock.add).toHaveBeenCalledWith(
       'gen',
       { userId: 'u_42' },
-      { jobId: 'u_42' },
+      { jobId: 'u_42', delay: 0 },
     );
+  });
+
+  it('removes a failed job before re-enqueueing', async () => {
+    const remove = vi.fn(async () => undefined);
+    insightsQueueMock.getJob.mockResolvedValue({
+      getState: vi.fn(async () => 'failed'),
+      remove,
+    });
+    await signedInAs('u_retry');
+    const res = await POST();
+    expect(res.status).toBe(202);
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(insightsQueueMock.add).toHaveBeenCalled();
   });
 
   it('429 after 10 calls/hour', async () => {

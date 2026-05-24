@@ -13,7 +13,12 @@ INTERNAL_TOKEN_HEADER = {"X-Internal-Token": "test-token"}
 def _aggregate_input() -> dict[str, Any]:
     return {
         "windowDays": 90,
-        "currency": "USD",
+        "currency": "CAD",
+        "location": {
+            "label": "Toronto, ON, Canada",
+            "country": "CA",
+            "merchantHints": ["4521"],
+        },
         "summary": {
             "topMerchants": [{"merchant": "Starbucks", "spend": 124.30, "visits": 21}],
             "monthlyTotals": [{"month": "2026-04", "total": 1230.10}],
@@ -41,7 +46,7 @@ def test_recommend_happy_path(client: TestClient, monkeypatch: pytest.MonkeyPatc
                     "title": "Cancel unused Netflix",
                     "description": "6 monthly charges, no activity in 60 days.",
                     "estimatedSavings": 191.88,
-                    "currency": "USD",
+                    "currency": "CAD",
                     "action": {
                         "label": "Cancel subscription",
                         "kind": "external_link",

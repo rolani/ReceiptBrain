@@ -14,7 +14,7 @@ function recommendResult(): RecommendResult {
         title: 'Cancel unused Netflix',
         description: 'No activity in 60 days.',
         estimatedSavings: 191.88,
-        currency: 'USD',
+        currency: 'CAD',
         action: { label: 'Cancel', kind: 'external_link', target: 'https://netflix.com' },
         sourceReceiptIds: ['r1', 'r2'],
         confidence: 0.86,
@@ -73,16 +73,29 @@ describe('handleGenerateInsights', () => {
 });
 
 describe('buildAggregate', () => {
-  it('rolls up topMerchants and monthlyTotals', () => {
-    const r = (date: string, merchant: string, total: number) => ({
+  it('rolls up topMerchants and monthlyTotals with CAD + embedded location', () => {
+    const r = (date: string, merchant: string, total: number, rawMerchant?: string) => ({
       total: { toString: () => total.toString(), toFixed: () => total.toFixed(2) } as never,
+      currency: 'CAD',
       purchasedAt: new Date(date),
+      rawMerchant: rawMerchant ?? null,
       merchant: { canonicalName: merchant },
     });
     const agg = buildAggregate(
-      [r('2026-04-01', 'Starbucks', 5), r('2026-04-15', 'Starbucks', 7), r('2026-05-01', 'Other', 10)],
+      [
+        r('2026-04-01', 'Starbucks', 5, 'STARBUCKS #4521 TORONTO, ON'),
+        r('2026-04-15', 'Starbucks', 7, 'STARBUCKS #4521'),
+        r('2026-05-01', 'Other', 10),
+      ],
       [],
       90,
+      { defaultLocation: 'Toronto, ON, Canada', locationCountry: 'CA' },
+    );
+    expect(agg.currency).toBe('CAD');
+    expect(agg.location.label).toBe('Toronto, ON, Canada');
+    expect(agg.location.country).toBe('CA');
+    expect(agg.location.merchantHints).toEqual(
+      expect.arrayContaining(['4521', 'Toronto, ON']),
     );
     expect(agg.summary.topMerchants[0]).toMatchObject({ merchant: 'Starbucks', visits: 2 });
     expect(agg.summary.monthlyTotals).toHaveLength(2);
@@ -94,6 +107,7 @@ describe('buildAggregate', () => {
       [
         {
           amount: { toString: () => '15.99' } as never,
+          currency: 'CAD',
           interval: 'monthly',
           lastCharge: new Date('2026-05-01'),
           merchant: { canonicalName: 'Netflix' },

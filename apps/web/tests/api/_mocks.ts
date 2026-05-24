@@ -50,6 +50,7 @@ export const extractQueueMock = {
 };
 
 export const insightsQueueMock = {
+  getJob: vi.fn().mockResolvedValue(null),
   add: vi.fn(async (_n: string, _data: unknown, opts?: { jobId?: string }) => ({
     id: opts?.jobId ?? 'job-i',
   })),

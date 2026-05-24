@@ -255,7 +255,11 @@ async def call_recommend(
                     "You are a careful personal finance assistant. Given an "
                     "aggregate of the user's last 90 days of spending, return "
                     "at most 5 actionable, explainable recommendations. Cite "
-                    "source receipts and subscriptions where possible."
+                    "source receipts and subscriptions where possible. "
+                    "Use the request currency for all savings amounts. "
+                    "Use the location label and merchantHints for local, "
+                    "region-appropriate alternatives (e.g. Canadian retailers "
+                    "and services when location is in Canada)."
                 ),
             },
             {
@@ -263,7 +267,7 @@ async def call_recommend(
                 "content": f"Prompt version: {prompt_version}\n{_json.dumps(aggregate)}",
             },
         ],
-    ),
+    )
     _ = int((time.perf_counter() - started) * 1000)
     raw = response.choices[0].message.content or '{"items": []}'
     parsed = _json.loads(raw)

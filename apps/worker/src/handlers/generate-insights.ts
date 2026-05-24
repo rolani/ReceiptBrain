@@ -7,9 +7,22 @@
 // means re-running for the same input is a no-op.
 
 import { createHash } from 'node:crypto';
+import {
+  buildRecommendLocation,
+  DEFAULT_RECOMMEND_CURRENCY,
+  DEFAULT_RECOMMEND_LOCATION,
+  resolveRecommendCurrency,
+  type RecommendLocation,
+} from '@receiptbrain/lib/domain';
 import type { PrismaClient, Prisma } from '@receiptbrain/lib/prisma';
 import type { GenerateInsightsJob } from '@receiptbrain/lib/queue';
 import type { AiClient, RecommendInsight } from '../ai-client.js';
+
+export interface BuildAggregateOptions {
+  defaultCurrency?: string;
+  defaultLocation?: string;
+  locationCountry?: string;
+}
 
 type LoggerLike = {
   info: (...args: unknown[]) => void;
@@ -47,7 +60,13 @@ export async function handleGenerateInsights(
 
   const receipts = await prisma.receipt.findMany({
     where: { userId: job.userId, deletedAt: null, purchasedAt: { gte: since } },
-    include: { merchant: true },
+    select: {
+      total: true,
+      currency: true,
+      purchasedAt: true,
+      rawMerchant: true,
+      merchant: { select: { canonicalName: true } },
+    },
   });
 
   const subs = await prisma.subscription.findMany({
@@ -55,7 +74,7 @@ export async function handleGenerateInsights(
     include: { merchant: true },
   });
 
-  const aggregate = buildAggregate(receipts, subs, windowDays);
+  const aggregate = buildAggregate(receipts, subs, windowDays, readAggregateOptions());
 
   const result = await ai.recommend(aggregate as unknown as Record<string, unknown>);
 
@@ -70,7 +89,7 @@ export async function handleGenerateInsights(
           title: i.title,
           description: i.description,
           estimatedSavings: i.estimatedSavings?.toFixed(2),
-          currency: i.currency,
+          currency: i.currency ?? aggregate.currency,
           action: i.action as unknown as object,
           status: 'new',
           sourceReceiptIds: i.sourceReceiptIds,
@@ -96,14 +115,26 @@ export async function handleGenerateInsights(
   return { insertedCount: inserted, totalCount: result.items.length };
 }
 
+function readAggregateOptions(): BuildAggregateOptions {
+  const country = process.env.DEFAULT_LOCATION_COUNTRY?.trim();
+  return {
+    defaultCurrency: process.env.DEFAULT_CURRENCY?.trim() || DEFAULT_RECOMMEND_CURRENCY,
+    defaultLocation: process.env.DEFAULT_LOCATION?.trim() || DEFAULT_RECOMMEND_LOCATION,
+    ...(country && country.length === 2 ? { locationCountry: country.toUpperCase() } : {}),
+  };
+}
+
 interface MinimalReceipt {
   total: Prisma.Decimal | null;
+  currency: string | null;
   purchasedAt: Date | null;
+  rawMerchant: string | null;
   merchant: { canonicalName: string } | null;
 }
 
 interface MinimalSubscription {
   amount: Prisma.Decimal;
+  currency: string;
   interval: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
   lastCharge: Date;
   merchant: { canonicalName: string };
@@ -114,9 +145,11 @@ export function buildAggregate(
   receipts: MinimalReceipt[],
   subs: MinimalSubscription[],
   windowDays: number,
+  opts: BuildAggregateOptions = {},
 ): {
   windowDays: number;
   currency: string;
+  location: RecommendLocation;
   summary: {
     topMerchants: Array<{ merchant: string; spend: number; visits: number }>;
     monthlyTotals: Array<{ month: string; total: number }>;
@@ -157,9 +190,24 @@ export function buildAggregate(
     lastCharge: s.lastCharge.toISOString(),
     occurrences: s.sourceReceiptIds.length,
   }));
+
+  const defaultCurrency = opts.defaultCurrency ?? DEFAULT_RECOMMEND_CURRENCY;
+  const currency = resolveRecommendCurrency(
+    [...receipts.map((r) => r.currency), ...subs.map((s) => s.currency)],
+    defaultCurrency,
+  );
+  const location = buildRecommendLocation(
+    receipts.map((r) => r.rawMerchant),
+    {
+      defaultLabel: opts.defaultLocation ?? DEFAULT_RECOMMEND_LOCATION,
+      country: opts.locationCountry,
+    },
+  );
+
   return {
     windowDays,
-    currency: 'USD',
+    currency,
+    location,
     summary: { topMerchants, monthlyTotals, recurringCandidates },
   };
 }
