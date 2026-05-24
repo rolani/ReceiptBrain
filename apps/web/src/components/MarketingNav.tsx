@@ -24,9 +24,6 @@ export function MarketingNav() {
           <a href="#how-it-works" className="transition hover:text-slate-900">
             How it works
           </a>
-          <a href="#pricing" className="transition hover:text-slate-900">
-            Pricing
-          </a>
           <a href="#faq" className="transition hover:text-slate-900">
             FAQ
           </a>

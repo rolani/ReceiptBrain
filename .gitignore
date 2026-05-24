@@ -33,3 +33,6 @@ playwright-report
 test-results
 
 .tmp-promptforge
+
+# localhost.run current URL (changes each tunnel session)
+.localhost-run-url

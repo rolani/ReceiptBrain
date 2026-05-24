@@ -38,7 +38,7 @@ export function Footer({ minimal = false }: { minimal?: boolean }) {
   return (
     <footer className="border-t border-slate-200 bg-slate-50">
       <div className="mx-auto max-w-screen-2xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white">
@@ -49,8 +49,8 @@ export function Footer({ minimal = false }: { minimal?: boolean }) {
               </span>
             </Link>
             <p className="mt-3 max-w-xs text-sm text-slate-600">
-              AI-powered receipt intelligence. Snap, extract, and uncover hidden subscriptions and
-              savings — privately.
+              Track receipts and subscriptions in one place — from uploads you control, with no bank
+              connection.
             </p>
             <p className="mt-4 text-xs text-slate-400">
               © {year} ReceiptBrain. All rights reserved.
@@ -62,17 +62,8 @@ export function Footer({ minimal = false }: { minimal?: boolean }) {
             links={[
               { href: '/#features', label: 'Features' },
               { href: '/#how-it-works', label: 'How it works' },
-              { href: '/#pricing', label: 'Pricing' },
+              { href: '/#faq', label: 'FAQ' },
               { href: '/sign-in', label: 'Sign in' },
-            ]}
-          />
-
-          <FooterCol
-            title="Use cases"
-            links={[
-              { href: '/#use-cases', label: 'Households' },
-              { href: '/#use-cases', label: 'Freelancers' },
-              { href: '/#use-cases', label: 'Small business' },
             ]}
           />
 
@@ -80,7 +71,6 @@ export function Footer({ minimal = false }: { minimal?: boolean }) {
             title="Trust"
             links={[
               { href: '/#security', label: 'Security' },
-              { href: '/#privacy', label: 'Privacy' },
               { href: '/api/health', label: 'Status' },
             ]}
           />

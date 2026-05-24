@@ -119,6 +119,8 @@ pnpm run tunnel:localhost   # terminal 2 — copy the https://….lhr.life URL
 
 Set `NEXTAUTH_URL` in `.env` to that URL and restart `pnpm dev` so magic links work.
 
+**Important:** Free tunnel URLs expire when the SSH session ends or restarts. Always use the URL printed by `pnpm run tunnel:localhost` (also saved in `.localhost-run-url`). Old URLs show blank pages or `no tunnel here`.
+
 Free URLs change each session. See [localhost.run](https://localhost.run) for custom domains.
 
 ## License

@@ -20,6 +20,8 @@ const nextConfig = {
   experimental: {
     typedRoutes: false,
   },
+  // Allow localhost.run tunnel hostnames in dev (otherwise _next/* assets 403 → blank page).
+  allowedDevOrigins: ['*.lhr.life', '*.localhost.run'],
   // Source files in workspace packages import sibling modules with explicit
   // `.js` extensions (required by Vitest/tsc moduleResolution: Bundler).
   // Next.js webpack does not resolve `.js` to `.ts` by default — this alias bridges them.

@@ -39,8 +39,10 @@ elif d.get('address'):
 " 2>/dev/null || true
       )"
       if [[ -n "$url" ]]; then
+        printf '%s\n' "$url" > .localhost-run-url
         echo ""
         echo "Public URL: $url"
+        echo "(saved to .localhost-run-url — previous URLs stop working when the tunnel restarts)"
         echo "Set NEXTAUTH_URL=$url in .env and restart pnpm dev for magic links."
         echo ""
       fi

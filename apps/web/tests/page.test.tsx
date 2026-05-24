@@ -7,11 +7,20 @@ describe('HomePage (marketing)', () => {
     render(<HomePage />);
     expect(screen.getAllByText(/ReceiptBrain/i).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { level: 1 }).textContent ?? '').toMatch(
-      /every receipt/i,
+      /every receipt tracked/i,
     );
   });
 
-  it('shows multiple "Start free" CTAs pointing at sign-in', () => {
+  it('highlights receipts and subscriptions', () => {
+    render(<HomePage />);
+    expect(screen.getByText(/recent receipts/i)).toBeInTheDocument();
+    expect(screen.getByText(/active subscriptions/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /receipts are the source of truth/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows "Start free" CTAs pointing at sign-in', () => {
     render(<HomePage />);
     const ctas = screen.getAllByRole('link', { name: /start free/i });
     expect(ctas.length).toBeGreaterThan(0);
@@ -20,14 +29,11 @@ describe('HomePage (marketing)', () => {
     }
   });
 
-  it('shows pricing, features, and FAQ section headings', () => {
+  it('shows features and FAQ section headings', () => {
     render(<HomePage />);
-    expect(screen.getByRole('heading', { name: /simple, honest pricing/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: /everything you need to take back control/i }),
+      screen.getByRole('heading', { name: /receipts are the source of truth/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: /frequently asked questions/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /quick answers/i })).toBeInTheDocument();
   });
 });
