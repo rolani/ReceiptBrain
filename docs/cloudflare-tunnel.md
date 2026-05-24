@@ -34,6 +34,114 @@ NEXTAUTH_URL=https://receiptbrain.richolaniyan.com
 
 Restart `pnpm dev` after changing `.env`.
 
+## Path A — Dashboard tunnel + Route 53 (no nameserver change)
+
+Use this if you created the tunnel in the **Cloudflare dashboard** and DNS stays on **Route 53**.
+
+### 1. Add a **Published application route** (not Hostname route)
+
+Cloudflare’s tunnel UI has several route types:
+
+| Tab | Purpose | For ReceiptBrain? |
+|-----|---------|-------------------|
+| **Published application routes** | Public URL → `localhost:3000` | **Yes — use this** |
+| **Hostname routes** | Steer hostname traffic to tunnel (no origin URL) | No |
+| **CIDR routes** | Private IP ranges | No |
+
+**Option A — From your tunnel page**
+
+1. Open [Zero Trust → Networks → Connectors → Cloudflare Tunnels](https://one.dash.cloudflare.com/)
+2. Click your tunnel (`1e59415e-67af-47a0-91ae-366bbb98f338`)
+3. Open **Published application routes** (not Hostname routes)
+4. Click **Add a published application route** (or **Add route** → **Published application**)
+5. Set:
+
+   | Field | Value |
+   |-------|--------|
+   | **Hostname** | `receiptbrain` + `richolaniyan.com`, **or** full `receiptbrain.richolaniyan.com` |
+   | **Service type** | HTTP |
+   | **URL** | `localhost:3000` |
+
+6. **Save**
+
+**Option B — New unified UI**
+
+1. [Networking → Tunnels](https://dash.cloudflare.com/) → your tunnel
+2. Under **Routes** → **Add route**
+3. Choose **Published application**
+4. Hostname: `receiptbrain.richolaniyan.com`
+5. Service URL: `http://localhost:3000`
+6. **Add route**
+
+If `richolaniyan.com` is **not** in the domain dropdown (Route 53 only), type the **full hostname** `receiptbrain.richolaniyan.com` or use the API step below.
+
+You can **ignore or delete** the Hostname route you created — it does not point traffic to `localhost:3000`.
+
+Copy your **Tunnel ID** from the same page (UUID like `a1b2c3d4-...`). You need it for Route 53.
+
+### 2. Add DNS in Route 53
+
+In the hosted zone for `richolaniyan.com`:
+
+| Type | Name | Value |
+|------|------|-------|
+| **CNAME** | `receiptbrain` | `<TUNNEL-ID>.cfargotunnel.com` |
+
+Example: tunnel ID `f70ff985-a4ef-4643-bbbc-4a0ed4fc8415` →  
+`f70ff985-a4ef-4643-bbbc-4a0ed4fc8415.cfargotunnel.com`
+
+Delete any **AAAA** record for `receiptbrain` if present.
+
+### 3. Run the tunnel connector on your Mac
+
+On the tunnel page, under **Install connector**, copy the token from:
+
+```bash
+cloudflared tunnel run --token eyJhIjoi...
+```
+
+In a terminal:
+
+```bash
+export CLOUDFLARE_TUNNEL_TOKEN='paste-token-here'
+pnpm run tunnel:token
+```
+
+Leave this running. You do **not** need `cert.pem` or `cloudflared/config.yml` for dashboard-managed tunnels.
+
+### 4. Run ReceiptBrain + verify
+
+Terminal 1:
+
+```bash
+docker compose up -d
+pnpm dev
+```
+
+Terminal 2:
+
+```bash
+pnpm run tunnel:token   # with CLOUDFLARE_TUNNEL_TOKEN set
+```
+
+Update `.env`:
+
+```env
+NEXTAUTH_URL=https://receiptbrain.richolaniyan.com
+```
+
+Restart `pnpm dev` after editing `.env`.
+
+Test (after DNS propagates, usually a few minutes):
+
+```bash
+curl -s https://receiptbrain.richolaniyan.com/api/health
+```
+
+In the Cloudflare dashboard, the tunnel status should show **Healthy** with active connections.
+
+## Quick setup (CLI / local config)
+
 ## Manual setup
 
 ### 1. Authenticate and create a tunnel

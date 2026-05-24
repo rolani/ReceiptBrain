@@ -5,7 +5,7 @@
 #   # Edit tunnel id + credentials-file path, then:
 #   pnpm run tunnel
 
-tunnel: REPLACE_WITH_TUNNEL_UUID
+tunnel: 1e59415e-67af-47a0-91ae-366bbb98f338
 credentials-file: /Users/YOU/.cloudflared/REPLACE_WITH_TUNNEL_UUID.json
 
 ingress:
