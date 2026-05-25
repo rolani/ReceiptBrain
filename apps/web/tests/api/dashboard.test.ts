@@ -8,7 +8,6 @@ import * as dashboard from '@/app/api/dashboard/route';
 beforeEach(() => {
   resetApiMocks();
   prismaMock.subscription.count = vi.fn().mockResolvedValue(2);
-  prismaMock.item.groupBy = vi.fn().mockResolvedValue([]);
 });
 
 describe('GET /api/dashboard', () => {
@@ -41,7 +40,8 @@ describe('GET /api/dashboard', () => {
           rawMerchant: 'Costco',
           merchant: null,
         },
-      ]);
+      ])
+      .mockResolvedValueOnce([]);
     prismaMock.receipt.count.mockResolvedValue(1);
     prismaMock.insight.findMany
       .mockResolvedValueOnce([{ estimatedSavings: { toString: () => '5.00' } }])

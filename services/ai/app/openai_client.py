@@ -78,10 +78,33 @@ def _extract_json_schema() -> dict[str, Any]:
                             "unitPrice": {"type": "number"},
                             "quantity": {"type": "integer"},
                             "lineTotal": {"type": "number"},
-                            "category": {"type": ["string", "null"]},
+                            "category": {
+                                "type": "string",
+                                "enum": [
+                                    "groceries",
+                                    "dining",
+                                    "transport",
+                                    "software",
+                                    "entertainment",
+                                    "utilities",
+                                    "household",
+                                    "health",
+                                    "travel",
+                                    "other",
+                                ],
+                                "description": (
+                                    "Spending category for this line item."
+                                ),
+                            },
                             "confidence": {"type": ["number", "null"]},
                         },
-                        "required": ["name", "unitPrice", "quantity", "lineTotal"],
+                        "required": [
+                            "name",
+                            "unitPrice",
+                            "quantity",
+                            "lineTotal",
+                            "category",
+                        ],
                     },
                 },
                 "fieldConfidence": {
@@ -131,7 +154,10 @@ async def call_extract(
             {
                 "role": "system",
                 "content": (
-                    "Extract structured receipt data. Be conservative — set "
+                    "Extract structured receipt data. Assign each line item a "
+                    "category from the allowed enum (groceries, dining, "
+                    "transport, software, entertainment, utilities, household, "
+                    "health, travel, other). Be conservative — set "
                     "fieldConfidence below 0.7 if you are unsure. Strip any "
                     "card numbers from output."
                 ),

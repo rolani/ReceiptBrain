@@ -48,5 +48,8 @@ vi.mock('@/env', () => ({
     AUTH_EMAIL_FROM: 'test@example.com',
     LOG_LEVEL: 'info',
     MAX_UPLOAD_MB: 10,
+    DEFAULT_CURRENCY: 'CAD',
+    DEFAULT_LOCATION: 'Canada',
+    DEFAULT_LOCATION_COUNTRY: 'CA',
   },
 }));

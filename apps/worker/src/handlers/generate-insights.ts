@@ -12,6 +12,7 @@ import {
   DEFAULT_RECOMMEND_CURRENCY,
   DEFAULT_RECOMMEND_LOCATION,
   resolveRecommendCurrency,
+  resolveRecommendDefaults,
   type RecommendLocation,
 } from '@receiptbrain/lib/domain';
 import type { PrismaClient, Prisma } from '@receiptbrain/lib/prisma';
@@ -69,12 +70,22 @@ export async function handleGenerateInsights(
     },
   });
 
-  const subs = await prisma.subscription.findMany({
-    where: { userId: job.userId, status: 'active' },
-    include: { merchant: true },
-  });
+  const [subs, user] = await Promise.all([
+    prisma.subscription.findMany({
+      where: { userId: job.userId, status: 'active' },
+      include: { merchant: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: job.userId },
+      select: {
+        defaultCurrency: true,
+        defaultLocation: true,
+        defaultLocationCountry: true,
+      },
+    }),
+  ]);
 
-  const aggregate = buildAggregate(receipts, subs, windowDays, readAggregateOptions());
+  const aggregate = buildAggregate(receipts, subs, windowDays, readAggregateOptions(user));
 
   const result = await ai.recommend(aggregate as unknown as Record<string, unknown>);
 
@@ -115,12 +126,24 @@ export async function handleGenerateInsights(
   return { insertedCount: inserted, totalCount: result.items.length };
 }
 
-function readAggregateOptions(): BuildAggregateOptions {
-  const country = process.env.DEFAULT_LOCATION_COUNTRY?.trim();
+function readAggregateOptions(
+  user: {
+    defaultCurrency: string | null;
+    defaultLocation: string | null;
+    defaultLocationCountry: string | null;
+  } | null,
+): BuildAggregateOptions {
+  const envCountry = process.env.DEFAULT_LOCATION_COUNTRY?.trim();
+  const resolved = resolveRecommendDefaults(user, {
+    currency: process.env.DEFAULT_CURRENCY?.trim() || DEFAULT_RECOMMEND_CURRENCY,
+    location: process.env.DEFAULT_LOCATION?.trim() || DEFAULT_RECOMMEND_LOCATION,
+    locationCountry:
+      envCountry && envCountry.length === 2 ? envCountry.toUpperCase() : null,
+  });
   return {
-    defaultCurrency: process.env.DEFAULT_CURRENCY?.trim() || DEFAULT_RECOMMEND_CURRENCY,
-    defaultLocation: process.env.DEFAULT_LOCATION?.trim() || DEFAULT_RECOMMEND_LOCATION,
-    ...(country && country.length === 2 ? { locationCountry: country.toUpperCase() } : {}),
+    defaultCurrency: resolved.currency,
+    defaultLocation: resolved.location,
+    ...(resolved.locationCountry ? { locationCountry: resolved.locationCountry } : {}),
   };
 }
 

@@ -3,3 +3,5 @@ export * from './subscription.js';
 export * from './spike.js';
 export * from './receipt-review.js';
 export * from './recommend-context.js';
+export * from './item-category.js';
+export * from './user-preferences.js';

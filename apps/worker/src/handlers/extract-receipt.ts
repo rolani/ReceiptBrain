@@ -9,7 +9,11 @@ import type { ExtractReceiptJob, GenerateInsightsQueueLike } from '@receiptbrain
 import { enqueueGenerateInsights } from '@receiptbrain/lib/queue';
 import { preprocessImage, type SupportedInputMime } from '@receiptbrain/lib/image';
 import type { AiClient, ExtractResult } from '../ai-client.js';
-import { REVIEW_CONFIDENCE_THRESHOLD } from '@receiptbrain/lib/domain';
+import {
+  inferItemCategory,
+  normalizeItemCategory,
+  REVIEW_CONFIDENCE_THRESHOLD,
+} from '@receiptbrain/lib/domain';
 
 export const LOW_CONFIDENCE_THRESHOLD = REVIEW_CONFIDENCE_THRESHOLD;
 
@@ -100,10 +104,13 @@ export async function handleExtractReceipt(
 
   try {
     await prisma.$transaction(async (tx: Parameters<Parameters<PrismaClient['$transaction']>[0]>[0]) => {
+      const merchantCategory = inferItemCategory({
+        merchantName: extracted.merchant,
+      });
       const merchant = await tx.merchant.upsert({
         where: { canonicalName: extracted.merchant },
         update: {},
-        create: { canonicalName: extracted.merchant },
+        create: { canonicalName: extracted.merchant, category: merchantCategory },
       });
 
       await tx.item.deleteMany({ where: { receiptId: receipt.id } });
@@ -116,18 +123,13 @@ export async function handleExtractReceipt(
             unitPrice: it.unitPrice.toFixed(2),
             quantity: it.quantity,
             lineTotal: it.lineTotal.toFixed(2),
-            category: (it.category as
-              | 'groceries'
-              | 'dining'
-              | 'transport'
-              | 'software'
-              | 'entertainment'
-              | 'utilities'
-              | 'household'
-              | 'health'
-              | 'travel'
-              | 'other'
-              | null) ?? null,
+            category: inferItemCategory({
+              merchantName: extracted.merchant,
+              itemName: it.name,
+              merchantCategory: it.category
+                ? normalizeItemCategory(it.category)
+                : merchantCategory,
+            }),
             confidence: it.confidence ?? null,
           })),
         });

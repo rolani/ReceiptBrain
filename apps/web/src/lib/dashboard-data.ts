@@ -1,3 +1,4 @@
+import { buildCategorySlicesFromReceipts } from '@receiptbrain/lib/domain';
 import { prisma } from '@receiptbrain/lib';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -133,7 +134,7 @@ export async function loadDashboardData(
     insights,
     recentReceipts,
     topInsights,
-    categorySpend,
+    receiptsForCategories,
     inFlightCount,
   ] = await Promise.all([
     prisma.receipt.findMany({
@@ -176,12 +177,14 @@ export async function loadDashboardData(
         currency: true,
       },
     }),
-    prisma.item.groupBy({
-      by: ['category'],
-      where: {
-        receipt: receiptWindowWhere(userId, start),
+    prisma.receipt.findMany({
+      where: receiptWindowWhere(userId, start),
+      select: {
+        total: true,
+        rawMerchant: true,
+        merchant: { select: { canonicalName: true, category: true } },
+        items: { select: { name: true, lineTotal: true, category: true } },
       },
-      _sum: { lineTotal: true },
     }),
     prisma.receipt.count({
       where: {
@@ -214,13 +217,7 @@ export async function loadDashboardData(
         prevSpendNum > 0 ? ((totalSpendNum - prevSpendNum) / prevSpendNum) * 100 : null,
     },
     spendSeries,
-    categorySlices: categorySpend
-      .map((c) => ({
-        label: c.category ?? 'other',
-        value: Number(c._sum.lineTotal ?? 0),
-      }))
-      .filter((s) => s.value > 0)
-      .sort((a, b) => b.value - a.value),
+    categorySlices: buildCategorySlicesFromReceipts(receiptsForCategories),
     recent: recentReceipts.map((r) => ({
       id: r.id,
       merchant: r.merchant?.canonicalName ?? r.rawMerchant ?? null,

@@ -1,21 +1,34 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
+import { SettingsSections } from '@/components/SettingsSections';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { env } from '@/env';
+import { loadSettingsData } from '@/lib/settings-data';
 
 export const dynamic = 'force-dynamic';
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session?.user) redirect('/sign-in');
+  if (!session?.user?.id) redirect('/sign-in');
+
+  const serverDefaults = {
+    currency: env.DEFAULT_CURRENCY,
+    location: env.DEFAULT_LOCATION,
+    locationCountry: env.DEFAULT_LOCATION_COUNTRY ?? null,
+  };
+
+  const data = await loadSettingsData(session.user.id, {
+    ...serverDefaults,
+    maxUploadMb: env.MAX_UPLOAD_MB,
+  });
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <div className="rounded-lg border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Account</h2>
-        <p className="mt-2 text-sm text-slate-700">
-          Signed in as <span className="font-medium">{session.user.email}</span>
-        </p>
-      </div>
+      <PageHeader
+        title="Settings"
+        description="Account details, workspace summary, and preferences you can change."
+      />
+      <SettingsSections data={data} serverDefaults={serverDefaults} />
     </div>
   );
 }

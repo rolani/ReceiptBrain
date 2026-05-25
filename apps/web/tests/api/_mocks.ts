@@ -13,7 +13,6 @@ export const prismaMock = {
   item: {
     deleteMany: vi.fn(),
     createMany: vi.fn(),
-    groupBy: vi.fn().mockResolvedValue([]),
   },
   subscription: {
     findMany: vi.fn().mockResolvedValue([]),
@@ -23,6 +22,10 @@ export const prismaMock = {
   },
   insight: {
     findMany: vi.fn().mockResolvedValue([]),
+    findUnique: vi.fn(),
+    update: vi.fn(),
+  },
+  user: {
     findUnique: vi.fn(),
     update: vi.fn(),
   },
@@ -62,6 +65,7 @@ export function resetApiMocks(): void {
     prismaMock.item,
     prismaMock.subscription,
     prismaMock.insight,
+    prismaMock.user,
     storageMock,
     extractQueueMock,
     insightsQueueMock,
@@ -78,7 +82,6 @@ export function resetApiMocks(): void {
   prismaMock.subscription.findMany.mockResolvedValue([]);
   prismaMock.subscription.count.mockResolvedValue(0);
   prismaMock.insight.findMany.mockResolvedValue([]);
-  prismaMock.item.groupBy.mockResolvedValue([]);
   prismaMock.$transaction.mockImplementation(async (fn: (tx: typeof prismaMock) => unknown) => {
     if (typeof fn === 'function') return fn(prismaMock);
     return fn;

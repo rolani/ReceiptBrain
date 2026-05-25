@@ -37,6 +37,13 @@ function makeDeps(): InsightsDeps & {
   const prisma = {
     receipt: { findMany: vi.fn(async () => []) },
     subscription: { findMany: vi.fn(async () => []) },
+    user: {
+      findUnique: vi.fn(async () => ({
+        defaultCurrency: 'CAD',
+        defaultLocation: 'Toronto, ON',
+        defaultLocationCountry: 'CA',
+      })),
+    },
     insight: { create: vi.fn(async () => ({ id: 'ins_1' })) },
   };
   const ai = {
