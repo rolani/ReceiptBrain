@@ -22,7 +22,12 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     const where: Record<string, unknown> = { userId: session.user.id };
     if (q.type) where.type = q.type;
-    if (q.status) where.status = q.status;
+    if (q.status) {
+      where.status = q.status;
+    } else {
+      // Main feed hides dismissed cards; explicit ?status=dismissed still works.
+      where.status = { not: 'dismissed' };
+    }
 
     const rows = await prisma.insight.findMany({
       where,

@@ -66,9 +66,14 @@ export function InsightCard(p: InsightCardProps) {
       <p className="mt-3 text-xs text-slate-500">
         Based on {p.sourceReceiptIds.length} receipt{p.sourceReceiptIds.length === 1 ? '' : 's'}
       </p>
+      {dismiss.isError ? (
+        <p role="alert" className="mt-3 text-xs text-red-700">
+          Could not dismiss — {String(dismiss.error.message)}
+        </p>
+      ) : null}
       <div className="mt-4 flex justify-end gap-2">
         <Button variant="secondary" onClick={() => dismiss.mutate()} disabled={dismiss.isPending}>
-          Dismiss
+          {dismiss.isPending ? 'Dismissing…' : 'Dismiss'}
         </Button>
         {p.action && p.action.kind === 'external_link' && p.action.target ? (
           <a

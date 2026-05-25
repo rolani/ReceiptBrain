@@ -88,6 +88,18 @@ describe('Subscriptions API', () => {
 });
 
 describe('Insights API', () => {
+  it('GET /api/insights excludes dismissed by default', async () => {
+    await signedInAs('u_1');
+    prismaMock.insight.findMany.mockResolvedValue([]);
+    const res = await insList.GET(req('/api/insights?limit=50') as never);
+    expect(res.status).toBe(200);
+    expect(prismaMock.insight.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: 'u_1', status: { not: 'dismissed' } },
+      }),
+    );
+  });
+
   it('GET /api/insights filters by type+status', async () => {
     await signedInAs('u_1');
     prismaMock.insight.findMany.mockResolvedValue([]);
