@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 async function uploadFile(file: File): Promise<{ receiptId: string; deduped: boolean }> {
@@ -18,12 +19,14 @@ export function ReceiptUploader() {
   const [drag, setDrag] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
+  const router = useRouter();
 
   const m = useMutation({
     mutationFn: uploadFile,
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['receipts'] });
       qc.invalidateQueries({ queryKey: ['dashboard'] });
+      router.push(`/receipts/${data.receiptId}`);
     },
   });
 
@@ -70,11 +73,6 @@ export function ReceiptUploader() {
       {m.isError ? (
         <p role="alert" className="mt-4 text-sm text-red-700">
           {String(m.error.message)}
-        </p>
-      ) : null}
-      {m.isSuccess ? (
-        <p className="mt-4 text-sm text-emerald-700">
-          {m.data.deduped ? 'Already uploaded' : 'Uploaded — extracting…'}
         </p>
       ) : null}
     </div>

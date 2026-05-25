@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { ReceiptDetailEditor, type ReceiptDetail } from '@/components/ReceiptDetailEditor';
 import { ReceiptDetailPoller } from '@/components/ReceiptDetailPoller';
 import { ReceiptDeleteButton } from '@/components/ReceiptDeleteButton';
+import { isInFlightReceiptStatus } from '@/lib/receipt-status';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,6 +60,14 @@ export default async function ReceiptDetailPage({ params }: PageProps) {
           label={detail.merchant ?? detail.rawMerchant}
         />
       </div>
+      {isInFlightReceiptStatus(detail.status) ? (
+        <p
+          role="status"
+          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+        >
+          Extracting receipt details… this page will update automatically when ready.
+        </p>
+      ) : null}
       <ReceiptDetailEditor receipt={detail} />
       {detail.items.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white p-6">
