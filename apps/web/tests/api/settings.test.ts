@@ -21,7 +21,7 @@ describe('PATCH /api/settings', () => {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: 'Alex' }),
-      }),
+      }) as never,
     );
     expect(res.status).toBe(401);
   });
@@ -33,7 +33,7 @@ describe('PATCH /api/settings', () => {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({}),
-      }),
+      }) as never,
     );
     expect(res.status).toBe(400);
   });
@@ -45,7 +45,7 @@ describe('PATCH /api/settings', () => {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ defaultCurrency: 'cad' }),
-      }),
+      }) as never,
     );
     expect(res.status).toBe(400);
   });
@@ -69,7 +69,7 @@ describe('PATCH /api/settings', () => {
           defaultLocation: 'Toronto, ON',
           defaultLocationCountry: 'CA',
         }),
-      }),
+      }) as never,
     );
 
     expect(res.status).toBe(200);

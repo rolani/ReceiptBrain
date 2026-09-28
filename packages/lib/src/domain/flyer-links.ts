@@ -155,7 +155,8 @@ export function inferCanadianProvince(
 ): CanadianProvince {
   if (country && country.toUpperCase() !== 'CA') return DEFAULT_PROVINCE;
   const m = location?.match(PROVINCE_RE);
-  if (m) return m[1].toUpperCase() as CanadianProvince;
+  const province = m?.[1];
+  if (province) return province.toUpperCase() as CanadianProvince;
   return DEFAULT_PROVINCE;
 }
 

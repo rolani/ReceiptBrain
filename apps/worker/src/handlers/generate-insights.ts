@@ -110,7 +110,14 @@ export async function handleGenerateInsights(
   const validateUrl = deps.validateUrl ?? validateInsightUrlReachable;
   const aiItems: RecommendInsight[] = [];
   for (const item of result.items) {
-    const action = await sanitizeInsightAction(item.action, validateUrl);
+    const sanitized = await sanitizeInsightAction(item.action, validateUrl);
+    const action: RecommendInsight['action'] = sanitized
+      ? {
+          label: sanitized.label,
+          kind: sanitized.kind,
+          ...(sanitized.target ? { target: sanitized.target } : {}),
+        }
+      : null;
     aiItems.push({ ...item, action });
   }
 

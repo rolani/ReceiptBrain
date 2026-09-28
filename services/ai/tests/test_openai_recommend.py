@@ -59,8 +59,9 @@ async def test_call_recommend_parses_openai_response_not_tuple(
         message = FakeMessage()
 
     class FakeResponse:
-        choices = [FakeChoice()]
-        usage = FakeUsage()
+        def __init__(self) -> None:
+            self.choices = [FakeChoice()]
+            self.usage = FakeUsage()
 
     def fake_create(**kwargs: Any) -> FakeResponse:
         captured.update(kwargs)
@@ -78,7 +79,7 @@ async def test_call_recommend_parses_openai_response_not_tuple(
         chat = FakeChat()
 
     fake_openai = types.ModuleType("openai")
-    fake_openai.OpenAI = lambda api_key: FakeClient()  # noqa: ARG005
+    fake_openai.OpenAI = lambda api_key: FakeClient()
     monkeypatch.delitem(sys.modules, "openai", raising=False)
     monkeypatch.setitem(sys.modules, "openai", fake_openai)
 

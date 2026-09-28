@@ -31,7 +31,8 @@ export function resolveRecommendCurrency(
     counts.set(c, (counts.get(c) ?? 0) + 1);
   }
   if (counts.size === 0) return defaultCurrency;
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  return top?.[0] ?? defaultCurrency;
 }
 
 /** Location fragments embedded in receipt `rawMerchant` before normalization strips them. */
@@ -48,12 +49,14 @@ export function extractMerchantLocationHints(raw: string | null | undefined): st
   if (postal) hints.add(`${postal[1]}${postal[2]}`.toUpperCase());
 
   const city = raw.match(CITY_REGION_RE);
-  if (city) {
-    const place = city[1]
+  const cityName = city?.[1];
+  const region = city?.[2];
+  if (cityName && region) {
+    const place = cityName
       .trim()
       .toLowerCase()
       .replace(/\b\w/g, (c) => c.toUpperCase());
-    hints.add(`${place}, ${city[2].toUpperCase()}`);
+    hints.add(`${place}, ${region.toUpperCase()}`);
   }
 
   return [...hints];
