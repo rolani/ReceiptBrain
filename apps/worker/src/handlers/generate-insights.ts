@@ -9,11 +9,18 @@
 import { createHash } from 'node:crypto';
 import {
   buildRecommendLocation,
+  buildFlyerInsights,
   DEFAULT_RECOMMEND_CURRENCY,
   DEFAULT_RECOMMEND_LOCATION,
+  inferCanadianProvince,
+  resolveInsightSourceReceiptIds,
   resolveRecommendCurrency,
   resolveRecommendDefaults,
+  sanitizeInsightAction,
+  validateInsightUrlReachable,
+  type ReceiptForProvenance,
   type RecommendLocation,
+  type SubscriptionForProvenance,
 } from '@receiptbrain/lib/domain';
 import type { PrismaClient, Prisma } from '@receiptbrain/lib/prisma';
 import type { GenerateInsightsJob } from '@receiptbrain/lib/queue';
@@ -34,6 +41,7 @@ export interface InsightsDeps {
   prisma: PrismaClient;
   ai: AiClient;
   logger?: unknown;
+  validateUrl?: (url: string) => Promise<boolean>;
 }
 
 export interface InsightsOutcome {
@@ -62,6 +70,7 @@ export async function handleGenerateInsights(
   const receipts = await prisma.receipt.findMany({
     where: { userId: job.userId, deletedAt: null, purchasedAt: { gte: since } },
     select: {
+      id: true,
       total: true,
       currency: true,
       purchasedAt: true,
@@ -85,13 +94,47 @@ export async function handleGenerateInsights(
     }),
   ]);
 
-  const aggregate = buildAggregate(receipts, subs, windowDays, readAggregateOptions(user));
+  const aggregateOpts = readAggregateOptions(user);
+  const aggregate = buildAggregate(receipts, subs, windowDays, aggregateOpts);
 
   const result = await ai.recommend(aggregate as unknown as Record<string, unknown>);
 
+  const province = inferCanadianProvince(user?.defaultLocation, aggregateOpts.locationCountry ?? 'CA');
+  const flyerItems = buildFlyerInsights(
+    aggregate.summary.topMerchants,
+    province,
+    aggregate.currency,
+    { country: aggregateOpts.locationCountry ?? 'CA' },
+  );
+
+  const validateUrl = deps.validateUrl ?? validateInsightUrlReachable;
+  const aiItems: RecommendInsight[] = [];
+  for (const item of result.items) {
+    const action = await sanitizeInsightAction(item.action, validateUrl);
+    aiItems.push({ ...item, action });
+  }
+
+  const allItems: RecommendInsight[] = [...aiItems, ...flyerItems];
+  const flyerTitles = new Set(flyerItems.map((f) => f.title));
+
+  const receiptsForProvenance: ReceiptForProvenance[] = receipts.map((r) => ({
+    id: r.id,
+    merchantName: r.merchant?.canonicalName ?? r.rawMerchant ?? 'Unknown',
+  }));
+  const subsForProvenance: SubscriptionForProvenance[] = subs.map((s) => ({
+    id: s.id,
+    merchantName: s.merchant.canonicalName,
+    sourceReceiptIds: s.sourceReceiptIds,
+  }));
+
   let inserted = 0;
-  for (const i of result.items) {
+  for (const i of allItems) {
     const fp = fingerprint(job.userId, i);
+    const sourceReceiptIds = resolveInsightSourceReceiptIds(
+      i,
+      receiptsForProvenance,
+      subsForProvenance,
+    );
     try {
       await prisma.insight.create({
         data: {
@@ -103,10 +146,10 @@ export async function handleGenerateInsights(
           currency: i.currency ?? aggregate.currency,
           action: i.action as unknown as object,
           status: 'new',
-          sourceReceiptIds: i.sourceReceiptIds,
+          sourceReceiptIds,
           sourceSubscriptionId: i.sourceSubscriptionId ?? null,
-          modelVersion: result.model,
-          promptVersion: result.promptVersion,
+          modelVersion: flyerTitles.has(i.title) ? 'flyer-v1' : result.model,
+          promptVersion: flyerTitles.has(i.title) ? 'flyer-v1' : result.promptVersion,
           contentFingerprint: fp,
         },
       });
@@ -120,10 +163,10 @@ export async function handleGenerateInsights(
   }
 
   (logger as LoggerLike | undefined)?.info?.(
-    { userId: job.userId, inserted, total: result.items.length },
+    { userId: job.userId, inserted, total: allItems.length },
     'generate_insights complete',
   );
-  return { insertedCount: inserted, totalCount: result.items.length };
+  return { insertedCount: inserted, totalCount: allItems.length };
 }
 
 function readAggregateOptions(
@@ -148,6 +191,7 @@ function readAggregateOptions(
 }
 
 interface MinimalReceipt {
+  id: string;
   total: Prisma.Decimal | null;
   currency: string | null;
   purchasedAt: Date | null;
@@ -156,6 +200,7 @@ interface MinimalReceipt {
 }
 
 interface MinimalSubscription {
+  id: string;
   amount: Prisma.Decimal;
   currency: string;
   interval: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
@@ -174,25 +219,28 @@ export function buildAggregate(
   currency: string;
   location: RecommendLocation;
   summary: {
-    topMerchants: Array<{ merchant: string; spend: number; visits: number }>;
+    topMerchants: Array<{ merchant: string; spend: number; visits: number; receiptIds: string[] }>;
     monthlyTotals: Array<{ month: string; total: number }>;
     recurringCandidates: Array<{
+      subscriptionId: string;
       merchant: string;
       amount: number;
       interval: string;
       lastCharge: string;
       occurrences: number;
+      sourceReceiptIds: string[];
     }>;
   };
 } {
-  const byMerchant = new Map<string, { spend: number; visits: number }>();
+  const byMerchant = new Map<string, { spend: number; visits: number; receiptIds: string[] }>();
   const byMonth = new Map<string, number>();
   for (const r of receipts) {
     const total = Number(r.total ?? 0);
     const merchant = r.merchant?.canonicalName ?? 'Unknown';
-    const slot = byMerchant.get(merchant) ?? { spend: 0, visits: 0 };
+    const slot = byMerchant.get(merchant) ?? { spend: 0, visits: 0, receiptIds: [] };
     slot.spend += total;
     slot.visits += 1;
+    slot.receiptIds.push(r.id);
     byMerchant.set(merchant, slot);
     if (r.purchasedAt) {
       const ym = r.purchasedAt.toISOString().slice(0, 7);
@@ -200,18 +248,25 @@ export function buildAggregate(
     }
   }
   const topMerchants = Array.from(byMerchant.entries())
-    .map(([merchant, v]) => ({ merchant, spend: Number(v.spend.toFixed(2)), visits: v.visits }))
+    .map(([merchant, v]) => ({
+      merchant,
+      spend: Number(v.spend.toFixed(2)),
+      visits: v.visits,
+      receiptIds: v.receiptIds,
+    }))
     .sort((a, b) => b.spend - a.spend)
     .slice(0, 10);
   const monthlyTotals = Array.from(byMonth.entries())
     .map(([month, total]) => ({ month, total: Number(total.toFixed(2)) }))
     .sort((a, b) => (a.month < b.month ? -1 : 1));
   const recurringCandidates = subs.map((s) => ({
+    subscriptionId: s.id,
     merchant: s.merchant.canonicalName,
     amount: Number(s.amount),
     interval: s.interval,
     lastCharge: s.lastCharge.toISOString(),
     occurrences: s.sourceReceiptIds.length,
+    sourceReceiptIds: s.sourceReceiptIds,
   }));
 
   const defaultCurrency = opts.defaultCurrency ?? DEFAULT_RECOMMEND_CURRENCY;

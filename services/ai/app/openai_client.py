@@ -47,6 +47,41 @@ def _normalize_purchased_at(value: Any) -> str:
     return ""
 
 
+VALID_ITEM_CATEGORIES = frozenset(
+    {
+        "groceries",
+        "dining",
+        "transport",
+        "software",
+        "entertainment",
+        "utilities",
+        "household",
+        "health",
+        "travel",
+        "other",
+    }
+)
+
+
+def _normalize_item_category(value: Any) -> str | None:
+    """Coerce model output to a known enum value, or None for worker inference."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    normalized = value.strip().lower()
+    if normalized in VALID_ITEM_CATEGORIES:
+        return normalized
+    return None
+
+
+def _apply_extract_normalizations(payload: dict[str, Any]) -> dict[str, Any]:
+    """Harden raw structured-output payload before Pydantic response validation."""
+    payload["purchasedAt"] = _normalize_purchased_at(payload.get("purchasedAt"))
+    for item in payload.get("items", []):
+        if isinstance(item, dict):
+            item["category"] = _normalize_item_category(item.get("category"))
+    return payload
+
+
 def _extract_json_schema() -> dict[str, Any]:
     return {
         "name": "ReceiptExtraction",
@@ -178,7 +213,7 @@ async def call_extract(
     raw_text = response.choices[0].message.content or "{}"
     safe = strip_pan_candidates(raw_text)
     payload = _json.loads(safe)
-    payload["purchasedAt"] = _normalize_purchased_at(payload.get("purchasedAt"))
+    _apply_extract_normalizations(payload)
     prompt_tokens = int(response.usage.prompt_tokens) if response.usage else 0
     completion_tokens = int(response.usage.completion_tokens) if response.usage else 0
     usage = {
@@ -280,8 +315,12 @@ async def call_recommend(
                 "content": (
                     "You are a careful personal finance assistant. Given an "
                     "aggregate of the user's last 90 days of spending, return "
-                    "at most 5 actionable, explainable recommendations. Cite "
-                    "source receipts and subscriptions where possible. "
+                    "at most 5 actionable, explainable recommendations. "
+                    "Each topMerchants entry includes receiptIds — put those "
+                    "ids in sourceReceiptIds for insights about that merchant. "
+                    "recurringCandidates include subscriptionId and "
+                    "sourceReceiptIds for subscription insights. Cite source "
+                    "receipts and subscriptions where possible. "
                     "Use the request currency for all savings amounts. "
                     "Use the location label and merchantHints for local, "
                     "region-appropriate alternatives (e.g. Canadian retailers "

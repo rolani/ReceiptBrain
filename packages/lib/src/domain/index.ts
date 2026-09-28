@@ -5,3 +5,6 @@ export * from './receipt-review.js';
 export * from './recommend-context.js';
 export * from './item-category.js';
 export * from './user-preferences.js';
+export * from './insight-provenance.js';
+export * from './flyer-links.js';
+export * from './insight-action-url.js';

@@ -24,4 +24,31 @@
   .app-shell-main {
     @apply min-h-[calc(100vh-4rem)] w-full min-w-0 flex-1 p-4 sm:p-6 lg:p-8;
   }
+
+  .animate-receipt-shimmer {
+    animation: receipt-shimmer 2s ease-in-out infinite;
+  }
+
+  .animate-receipt-scan {
+    animation: receipt-scan 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes receipt-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+@keyframes receipt-scan {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(calc(100% - 2px));
+  }
 }

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -10,6 +11,7 @@ import {
   getReviewReasons,
   toDatetimeLocalValue,
 } from '@receiptbrain/lib/domain';
+import { isInFlightReceiptStatus } from '@/lib/receipt-status';
 
 export interface ReceiptDetail {
   id: string;
@@ -71,6 +73,14 @@ function buildPatchPayload(values: FormValues, status?: 'extracted'): PatchBody 
   return payload;
 }
 
+function formValuesFromReceipt(receipt: ReceiptDetail): FormValues {
+  return {
+    rawMerchant: receipt.merchant ?? receipt.rawMerchant ?? '',
+    total: receipt.total ?? '',
+    purchasedAtLocal: toDatetimeLocalValue(receipt.purchasedAt),
+  };
+}
+
 export function ReceiptDetailEditor({ receipt }: { receipt: ReceiptDetail }) {
   const router = useRouter();
   const qc = useQueryClient();
@@ -83,12 +93,24 @@ export function ReceiptDetailEditor({ receipt }: { receipt: ReceiptDetail }) {
       : [];
 
   const form = useForm<FormValues>({
-    defaultValues: {
-      rawMerchant: receipt.merchant ?? receipt.rawMerchant ?? '',
-      total: receipt.total ?? '',
-      purchasedAtLocal: toDatetimeLocalValue(receipt.purchasedAt),
-    },
+    defaultValues: formValuesFromReceipt(receipt),
   });
+
+  // react-hook-form only applies defaultValues on mount. When the user opens the
+  // detail page while extraction is in-flight, the poller refreshes server props
+  // once items/merchant/total/date arrive — sync the editable fields then.
+  useEffect(() => {
+    if (isInFlightReceiptStatus(receipt.status)) return;
+    form.reset(formValuesFromReceipt(receipt));
+  }, [
+    receipt.id,
+    receipt.status,
+    receipt.merchant,
+    receipt.rawMerchant,
+    receipt.total,
+    receipt.purchasedAt,
+    form,
+  ]);
 
   const save = useMutation({
     mutationFn: (v: FormValues) => patchReceipt(receipt.id, buildPatchPayload(v)),

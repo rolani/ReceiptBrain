@@ -53,6 +53,7 @@ export const RecommendInputSchema = z.object({
         merchant: z.string(),
         spend: z.number(),
         visits: z.number().int(),
+        receiptIds: z.array(z.string()).optional(),
       }),
     ),
     monthlyTotals: z.array(
@@ -63,11 +64,13 @@ export const RecommendInputSchema = z.object({
     ),
     recurringCandidates: z.array(
       z.object({
+        subscriptionId: z.string().optional(),
         merchant: z.string(),
         amount: z.number(),
         interval: SubscriptionInterval,
         lastCharge: z.string().datetime(),
         occurrences: z.number().int().min(1),
+        sourceReceiptIds: z.array(z.string()).optional(),
       }),
     ),
   }),

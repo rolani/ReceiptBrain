@@ -102,6 +102,45 @@ def test_extract_returns_500_on_openai_failure(
     assert res.json()["error"] == "upstream_error"
 
 
+def test_extract_coerces_invalid_item_categories(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: store-aisle labels like Dairy must not 500 the route."""
+    from app import openai_client
+
+    async def fake_extract(
+        _image: bytes, *, prompt_version: str
+    ) -> tuple[dict[str, Any], dict[str, int | float]]:
+        payload = _mock_openai_response()
+        payload["items"] = [
+            {
+                "name": "Milk",
+                "unitPrice": 4.99,
+                "quantity": 1,
+                "lineTotal": 4.99,
+                "category": "Dairy",
+                "confidence": 0.9,
+            }
+        ]
+        for item in payload["items"]:
+            item["category"] = openai_client._normalize_item_category(item.get("category"))
+        return payload, {
+            "promptTokens": 100,
+            "completionTokens": 50,
+            "costUsdEstimate": 0.001,
+        }
+
+    monkeypatch.setattr(openai_client, "call_extract", fake_extract)
+
+    res = client.post(
+        "/extract",
+        json={"image_b64": _b64_synthetic_jpeg()},
+        headers=INTERNAL_TOKEN_HEADER,
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["items"][0]["category"] is None
+
+
 @pytest.fixture()
 def synthetic_fixture(tmp_path: Path) -> Path:
     """Materialize a tiny fixture with ground-truth JSON for the parity test."""

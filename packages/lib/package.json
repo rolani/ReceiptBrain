@@ -22,6 +22,7 @@
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:verify-flyer-links": "VERIFY_FLYER_LINKS=1 vitest run tests/domain/flyer-links.live.test.ts",
     "clean": "rimraf dist .turbo",
     "postinstall": "prisma generate --schema=prisma/schema.prisma || true",
     "db:generate": "prisma generate --schema=prisma/schema.prisma",

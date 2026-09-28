@@ -2,8 +2,10 @@ import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@receiptbrain/lib';
 import { auth } from '@/auth';
 import { ReceiptDetailEditor, type ReceiptDetail } from '@/components/ReceiptDetailEditor';
+import { ReceiptDetailFooter } from '@/components/ReceiptDetailFooter';
 import { ReceiptDetailPoller } from '@/components/ReceiptDetailPoller';
 import { ReceiptDeleteButton } from '@/components/ReceiptDeleteButton';
+import { ReceiptExtractionLoader } from '@/components/ReceiptExtractionLoader';
 import { isInFlightReceiptStatus } from '@/lib/receipt-status';
 
 export const dynamic = 'force-dynamic';
@@ -60,14 +62,7 @@ export default async function ReceiptDetailPage({ params }: PageProps) {
           label={detail.merchant ?? detail.rawMerchant}
         />
       </div>
-      {isInFlightReceiptStatus(detail.status) ? (
-        <p
-          role="status"
-          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"
-        >
-          Extracting receipt details… this page will update automatically when ready.
-        </p>
-      ) : null}
+      {isInFlightReceiptStatus(detail.status) ? <ReceiptExtractionLoader /> : null}
       <ReceiptDetailEditor receipt={detail} />
       {detail.items.length > 0 ? (
         <section className="rounded-lg border border-slate-200 bg-white p-6">
@@ -84,6 +79,7 @@ export default async function ReceiptDetailPage({ params }: PageProps) {
           </ul>
         </section>
       ) : null}
+      {!isInFlightReceiptStatus(detail.status) ? <ReceiptDetailFooter /> : null}
     </div>
   );
 }

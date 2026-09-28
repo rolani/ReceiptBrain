@@ -112,6 +112,72 @@ describe('Insights API', () => {
     );
   });
 
+  it('GET /api/insights strips disallowed external link targets', async () => {
+    await signedInAs('u_1');
+    prismaMock.insight.findMany.mockResolvedValue([
+      {
+        id: 'i_bad',
+        type: 'optimization_tip',
+        title: 'Bad link',
+        description: 'Test',
+        estimatedSavings: null,
+        currency: 'CAD',
+        action: { label: 'Go', kind: 'external_link', target: 'javascript:alert(1)' },
+        status: 'new',
+        sourceReceiptIds: ['r1'],
+        sourceSubscriptionId: null,
+        modelVersion: 'flyer-v1',
+        promptVersion: 'flyer-v1',
+        createdAt: new Date('2026-06-29'),
+      },
+    ]);
+    prismaMock.receipt.findMany.mockResolvedValue([]);
+    prismaMock.subscription.findMany.mockResolvedValue([]);
+
+    const res = await insList.GET(req('/api/insights?limit=50') as never);
+    const body = await res.json();
+    expect(body.items[0].action).toBeNull();
+  });
+
+  it('GET /api/insights backfills empty sourceReceiptIds from receipt window', async () => {
+    await signedInAs('u_1');
+    prismaMock.insight.findMany.mockResolvedValue([
+      {
+        id: 'i1',
+        type: 'subscription_waste',
+        title: 'Assess HubSpot Subscription Value',
+        description: 'Recurring charge.',
+        estimatedSavings: { toFixed: () => '55.00' },
+        currency: 'CAD',
+        action: null,
+        status: 'new',
+        sourceReceiptIds: [],
+        sourceSubscriptionId: null,
+        modelVersion: 'gpt-4o-mini',
+        promptVersion: 'recommend-v1',
+        createdAt: new Date('2026-06-29'),
+      },
+    ]);
+    prismaMock.receipt.findMany.mockResolvedValue([
+      {
+        id: 'r_hubspot',
+        rawMerchant: 'HubSpot',
+        merchant: { canonicalName: 'HubSpot' },
+      },
+    ]);
+    prismaMock.subscription.findMany.mockResolvedValue([]);
+    prismaMock.insight.update.mockResolvedValue({ id: 'i1' });
+
+    const res = await insList.GET(req('/api/insights?limit=50') as never);
+    const body = await res.json();
+
+    expect(body.items[0].sourceReceiptIds).toEqual(['r_hubspot']);
+    expect(prismaMock.insight.update).toHaveBeenCalledWith({
+      where: { id: 'i1' },
+      data: { sourceReceiptIds: ['r_hubspot'] },
+    });
+  });
+
   it('PATCH /api/insights/:id 400 on bad status', async () => {
     await signedInAs('u_1');
     const res = await insPatch.PATCH(

@@ -76,6 +76,7 @@ class TopMerchant(BaseModel):
     merchant: str
     spend: float
     visits: int
+    receiptIds: list[str] = Field(default_factory=list)
 
 
 class MonthlyTotal(BaseModel):
@@ -84,11 +85,13 @@ class MonthlyTotal(BaseModel):
 
 
 class RecurringCandidate(BaseModel):
+    subscriptionId: str | None = None
     merchant: str
     amount: float
     interval: Literal["weekly", "monthly", "quarterly", "yearly"]
     lastCharge: str
     occurrences: int
+    sourceReceiptIds: list[str] = Field(default_factory=list)
 
 
 class RecommendSummary(BaseModel):

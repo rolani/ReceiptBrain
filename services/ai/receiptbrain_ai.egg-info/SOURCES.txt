@@ -11,8 +11,10 @@ receiptbrain_ai.egg-info/dependency_links.txt
 receiptbrain_ai.egg-info/requires.txt
 receiptbrain_ai.egg-info/top_level.txt
 tests/test_auth.py
+tests/test_call_extract_normalize.py
 tests/test_extract.py
 tests/test_health.py
+tests/test_normalize_item_category.py
 tests/test_normalize_purchased_at.py
 tests/test_openai_recommend.py
 tests/test_pii_guard.py
